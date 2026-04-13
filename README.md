@@ -17,17 +17,46 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+Real-world recommenders like Spotify combine two strategies: **collaborative filtering** (finding users with similar taste and borrowing their history) and **content-based filtering** (matching songs by their measurable attributes). This simulation focuses entirely on **content-based filtering** — the system never looks at what other users did. Instead, it builds a profile of what one user prefers (genre, mood, energy level, and acoustic feel) and scores every song by how close its attributes are to those preferences. This approach is transparent, easy to debug, and avoids the "cold start" problem for new songs. The tradeoff is a filter bubble: the system will confidently recommend more of what you already like, but it won't surprise you the way collaborative filtering can.
 
-Some prompts to answer:
+### Song Attributes Used in Scoring
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+| Feature | Type | Role |
+|---|---|---|
+| `genre` | categorical | Exact-match bonus — broad style label |
+| `mood` | categorical | Exact-match bonus — emotional intent label |
+| `energy` | float 0–1 | Proximity-scored against user's target energy |
+| `valence` | float 0–1 | Proximity-scored — musical positivity/happiness |
+| `danceability` | float 0–1 | Proximity-scored — rhythmic feel |
+| `acousticness` | float 0–1 | Proximity-scored — organic vs. electronic texture |
+| `tempo_bpm` | float | Normalized to [0–1] then proximity-scored |
 
-You can include a simple diagram or bullet list if helpful.
+### UserProfile Fields
+
+| Field | Type | Purpose |
+|---|---|---|
+| `favorite_genre` | str | Preferred genre for exact-match scoring |
+| `favorite_mood` | str | Preferred mood for exact-match scoring |
+| `target_energy` | float | Ideal energy level (0–1); closer songs score higher |
+| `likes_acoustic` | bool | Maps to acousticness target (high if True, low if False) |
+
+### Scoring and Ranking Rules
+
+Each song receives a weighted score (0.0–1.0):
+
+```
+score = 0.25 × energy_proximity
+      + 0.20 × valence_proximity
+      + 0.20 × mood_match       (1 if match, else 0)
+      + 0.15 × acousticness_proximity
+      + 0.10 × danceability_proximity
+      + 0.07 × genre_match      (1 if match, else 0)
+      + 0.03 × tempo_proximity
+
+proximity = 1 - |user_target - song_value|
+```
+
+The **Ranking Rule** sorts all scored songs descending by score and returns the top K results.
 
 ---
 
