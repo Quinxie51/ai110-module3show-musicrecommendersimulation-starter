@@ -74,10 +74,59 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
     """
     Scores a single song against user preferences.
     Required by recommend_songs() and src/main.py
+
+    Algorithm Recipe (max possible = 7.00 points):
+      +2.00  genre match         (categorical exact match)
+      +1.50  mood match          (categorical exact match)
+      +1.50  energy proximity    (1 - |target - song|)
+      +1.00  acousticness proximity
+      +0.75  valence proximity
+      +0.25  tempo proximity     (tempo_bpm normalized to 0-1 first)
+
+    Returns:
+        (normalized_score, reasons)  where normalized_score is in [0.0, 1.0]
     """
-    # TODO: Implement scoring logic using your Algorithm Recipe from Phase 2.
-    # Expected return format: (score, reasons)
-    return []
+    MAX_SCORE = 7.00
+    score = 0.0
+    reasons = []
+
+    # --- Categorical: genre match (+2.00) ---
+    if song["genre"] == user_prefs.get("favorite_genre", ""):
+        score += 2.00
+        reasons.append(f"genre match '{song['genre']}' (+2.00)")
+
+    # --- Categorical: mood match (+1.50) ---
+    if song["mood"] == user_prefs.get("favorite_mood", ""):
+        score += 1.50
+        reasons.append(f"mood match '{song['mood']}' (+1.50)")
+
+    # --- Numerical: energy proximity (weight 1.50) ---
+    target_energy = user_prefs.get("target_energy", 0.5)
+    energy_prox = 1.0 - abs(target_energy - song["energy"])
+    score += 1.50 * energy_prox
+    reasons.append(f"energy proximity {energy_prox:.2f} (+{1.50 * energy_prox:.2f})")
+
+    # --- Numerical: acousticness proximity (weight 1.00) ---
+    acoustic_target = 0.80 if user_prefs.get("likes_acoustic", False) else 0.15
+    acoustic_prox = 1.0 - abs(acoustic_target - song["acousticness"])
+    score += 1.00 * acoustic_prox
+    reasons.append(f"acousticness proximity {acoustic_prox:.2f} (+{1.00 * acoustic_prox:.2f})")
+
+    # --- Numerical: valence proximity (weight 0.75) ---
+    target_valence = user_prefs.get("target_valence", 0.5)
+    valence_prox = 1.0 - abs(target_valence - song["valence"])
+    score += 0.75 * valence_prox
+    reasons.append(f"valence proximity {valence_prox:.2f} (+{0.75 * valence_prox:.2f})")
+
+    # --- Numerical: tempo proximity (weight 0.25, normalized to 0-1) ---
+    target_tempo = user_prefs.get("target_tempo", 0.17)
+    tempo_norm = (song["tempo_bpm"] - 60) / (180 - 60)
+    tempo_prox = 1.0 - abs(target_tempo - tempo_norm)
+    score += 0.25 * tempo_prox
+    reasons.append(f"tempo proximity {tempo_prox:.2f} (+{0.25 * tempo_prox:.2f})")
+
+    normalized = round(score / MAX_SCORE, 4)
+    return normalized, reasons
 
 def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tuple[Dict, float, str]]:
     """
