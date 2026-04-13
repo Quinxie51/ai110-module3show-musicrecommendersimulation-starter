@@ -132,7 +132,15 @@ def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tup
     """
     Functional implementation of the recommendation logic.
     Required by src/main.py
+
+    Uses sorted() (not .sort()) to rank without mutating the original catalog.
+    Returns the top-k songs as (song_dict, normalized_score, explanation) tuples.
     """
-    # TODO: Implement scoring and ranking logic
-    # Expected return format: (song_dict, score, explanation)
-    return []
+    scored = []
+    for song in songs:
+        score, reasons = score_song(user_prefs, song)
+        explanation = " | ".join(reasons)
+        scored.append((song, score, explanation))
+
+    ranked = sorted(scored, key=lambda item: item[1], reverse=True)
+    return ranked[:k]
