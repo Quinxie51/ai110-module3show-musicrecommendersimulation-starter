@@ -128,6 +128,50 @@ Running `python -m src.main` with the default `pop/happy` profile produces:
 
 ---
 
+## Profile Experiments
+
+The system was tested against six profiles — three standard and three adversarial edge cases designed to stress-test the scoring logic.
+
+### Standard Profiles
+
+**High-Energy Pop** — genre=pop, mood=happy, energy=0.85
+
+![High-Energy Pop recommendations](assets/profile_pop.png)
+
+**Chill Lofi** — genre=lofi, mood=chill, energy=0.38, acoustic=yes
+
+![Chill Lofi recommendations](assets/profile_lofi.png)
+
+**Deep Intense Rock** — genre=rock, mood=intense, energy=0.92
+
+![Deep Intense Rock recommendations](assets/profile_rock.png)
+
+---
+
+### Adversarial / Edge-Case Profiles
+
+These profiles were designed to find weaknesses in the scoring logic.
+
+**"Sad but Hype"** — high energy (0.90) + sad mood — these almost never co-occur in the catalog
+
+![Sad but Hype recommendations](assets/profile_sad_hype.png)
+
+> Expected weakness: no song matches both constraints well. The system is forced to trade off energy score against mood match, revealing which weight dominates.
+
+**"Acoustic Raver"** — EDM genre + `likes_acoustic=True` — EDM songs have acousticness ~0.03, so the acoustic preference directly fights the genre preference
+
+![Acoustic Raver recommendations](assets/profile_acoustic_raver.png)
+
+> Expected weakness: genre match (+2.00) pulls toward EDM, but acousticness proximity pulls toward folk/jazz. The system cannot satisfy both simultaneously.
+
+**"Completely Neutral"** — unknown genre/mood that never matches, all numerical targets at 0.50
+
+![Completely Neutral recommendations](assets/profile_neutral.png)
+
+> Expected behavior: all songs score similarly (~0.40–0.55). Ranking becomes nearly arbitrary — exposing that tie-breaking falls back to catalog order, not any meaningful signal.
+
+---
+
 ## Getting Started
 
 ### Setup

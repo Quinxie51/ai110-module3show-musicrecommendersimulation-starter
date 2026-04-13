@@ -75,36 +75,41 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
     Scores a single song against user preferences.
     Required by recommend_songs() and src/main.py
 
-    Algorithm Recipe (max possible = 7.00 points):
-      +2.00  genre match         (categorical exact match)
-      +1.50  mood match          (categorical exact match)
-      +1.50  energy proximity    (1 - |target - song|)
+    Algorithm Recipe — EXPERIMENT: energy×2, genre÷2
+      (max possible = 1.00 + 1.50 + 3.00 + 1.00 + 0.75 + 0.25 = 7.50 points)
+
+      +1.00  genre match         (halved from 2.00 — tests if genre over-dominates)
+      +1.50  mood match          (unchanged)
+      +3.00  energy proximity    (doubled from 1.50 — energy is now the top signal)
       +1.00  acousticness proximity
       +0.75  valence proximity
       +0.25  tempo proximity     (tempo_bpm normalized to 0-1 first)
 
+    Math validity: normalized_score = raw / 7.50, always in [0.0, 1.0]
+
     Returns:
         (normalized_score, reasons)  where normalized_score is in [0.0, 1.0]
     """
-    MAX_SCORE = 7.00
+    # EXPERIMENT weights — original: genre=2.00, energy=1.50, MAX=7.00
+    MAX_SCORE = 7.50   # 1.00 + 1.50 + 3.00 + 1.00 + 0.75 + 0.25
     score = 0.0
     reasons = []
 
-    # --- Categorical: genre match (+2.00) ---
+    # --- Categorical: genre match (+1.00, halved) ---
     if song["genre"] == user_prefs.get("favorite_genre", ""):
-        score += 2.00
-        reasons.append(f"genre match '{song['genre']}' (+2.00)")
+        score += 1.00
+        reasons.append(f"genre match '{song['genre']}' (+1.00)")
 
     # --- Categorical: mood match (+1.50) ---
     if song["mood"] == user_prefs.get("favorite_mood", ""):
         score += 1.50
         reasons.append(f"mood match '{song['mood']}' (+1.50)")
 
-    # --- Numerical: energy proximity (weight 1.50) ---
+    # --- Numerical: energy proximity (weight 3.00, doubled) ---
     target_energy = user_prefs.get("target_energy", 0.5)
     energy_prox = 1.0 - abs(target_energy - song["energy"])
-    score += 1.50 * energy_prox
-    reasons.append(f"energy proximity {energy_prox:.2f} (+{1.50 * energy_prox:.2f})")
+    score += 3.00 * energy_prox
+    reasons.append(f"energy proximity {energy_prox:.2f} (+{3.00 * energy_prox:.2f})")
 
     # --- Numerical: acousticness proximity (weight 1.00) ---
     acoustic_target = 0.80 if user_prefs.get("likes_acoustic", False) else 0.15
@@ -125,7 +130,7 @@ def score_song(user_prefs: Dict, song: Dict) -> Tuple[float, List[str]]:
     score += 0.25 * tempo_prox
     reasons.append(f"tempo proximity {tempo_prox:.2f} (+{0.25 * tempo_prox:.2f})")
 
-    normalized = round(score / MAX_SCORE, 4)
+    normalized = round(score / MAX_SCORE, 4)  # MAX_SCORE=7.50 keeps result in [0,1]
     return normalized, reasons
 
 def recommend_songs(user_prefs: Dict, songs: List[Dict], k: int = 5) -> List[Tuple[Dict, float, str]]:
