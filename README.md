@@ -19,6 +19,8 @@ Replace this paragraph with your own summary of what your version does.
 
 Real-world recommenders like Spotify combine two strategies: **collaborative filtering** (finding users with similar taste and borrowing their history) and **content-based filtering** (matching songs by their measurable attributes). This simulation focuses entirely on **content-based filtering** — the system never looks at what other users did. Instead, it builds a profile of what one user prefers (genre, mood, energy level, and acoustic feel) and scores every song by how close its attributes are to those preferences. This approach is transparent, easy to debug, and avoids the "cold start" problem for new songs. The tradeoff is a filter bubble: the system will confidently recommend more of what you already like, but it won't surprise you the way collaborative filtering can.
 
+---
+
 ### Song Attributes Used in Scoring
 
 | Feature | Type | Role |
@@ -40,23 +42,75 @@ Real-world recommenders like Spotify combine two strategies: **collaborative fil
 | `target_energy` | float | Ideal energy level (0–1); closer songs score higher |
 | `likes_acoustic` | bool | Maps to acousticness target (high if True, low if False) |
 
-### Scoring and Ranking Rules
+---
 
-Each song receives a weighted score (0.0–1.0):
+### Algorithm Recipe (Finalized)
+
+The system scores every song on a **0.0–1.0 scale** using additive weighted points, then normalizes by the maximum possible score (7.00).
+
+#### Step 1 — Categorical Matching (exact match = full points, no match = 0)
 
 ```
-score = 0.25 × energy_proximity
-      + 0.20 × valence_proximity
-      + 0.20 × mood_match       (1 if match, else 0)
-      + 0.15 × acousticness_proximity
-      + 0.10 × danceability_proximity
-      + 0.07 × genre_match      (1 if match, else 0)
-      + 0.03 × tempo_proximity
-
-proximity = 1 - |user_target - song_value|
++2.00  genre match    — hard filter; genre is rare in a large catalog, so it earns the most
++1.50  mood match     — intent signal; rewards songs that fit how the user wants to feel
 ```
 
-The **Ranking Rule** sorts all scored songs descending by score and returns the top K results.
+Genre earns more than mood because a genre match is statistically rarer (1-in-13 chance across the catalog) and eliminates the most mismatched songs quickly. Mood earns slightly less but still outweighs any single numerical feature, because it captures the user's emotional intent directly.
+
+#### Step 2 — Numerical Proximity Scoring
+
+Each numerical feature is scored using:
+
+```
+proximity = 1 - |user_target - song_value|   →  range: 0.0 (opposite) to 1.0 (perfect match)
+```
+
+| Feature | Points (× proximity) | Why this weight |
+|---|---|---|
+| `energy` | × 1.50 | Single strongest perceptual axis — intensity is felt immediately |
+| `acousticness` | × 1.00 | Defines sonic texture; separates organic from electronic |
+| `valence` | × 0.75 | Emotional tone; partially captured by mood already |
+| `tempo_bpm` | × 0.25 | Fine-tuning; correlated with energy, so lower weight avoids double-counting |
+
+`tempo_bpm` is normalized before scoring: `tempo_norm = (bpm - 60) / (180 - 60)`
+
+`acousticness` target is derived from `likes_acoustic`: `0.80` if `True`, `0.15` if `False`
+
+#### Step 3 — Full Formula
+
+```
+score = 2.00 × genre_match
+      + 1.50 × mood_match
+      + 1.50 × energy_proximity
+      + 1.00 × acousticness_proximity
+      + 0.75 × valence_proximity
+      + 0.25 × tempo_proximity
+
+normalized_score = score / 7.00
+```
+
+#### Step 4 — Ranking Rule
+
+All songs are scored independently, then **sorted descending by normalized score**. The top K results are returned. Songs with equal scores are ordered by their original catalog position (stable sort).
+
+---
+
+### Expected Biases and Limitations
+
+**1. Genre lock-in (strongest bias)**
+With `genre_match` worth 2.00 points out of 7.00 (29% of the maximum), a genre-matching song always has a 0.29 head start over non-matching songs. A jazz ballad that perfectly matches a user's energy, mood, valence, and tempo could still lose to a mediocre pop song just because the genre label matched. This system will consistently under-recommend songs from adjacent genres that the user might actually enjoy.
+
+**2. Mood as a coarse label**
+`mood` is a single categorical label chosen by whoever tagged the song. Two songs both labeled "chill" may feel completely different. A track tagged "relaxed" that the user would describe as "chill" gets zero mood points even though the intent is the same. The system has no way to detect near-miss label disagreements.
+
+**3. Acousticness oversimplification**
+`likes_acoustic: bool` collapses a nuanced preference into a binary — either targeting 0.80 (acoustic) or 0.15 (electric). A user who enjoys both a lo-fi guitar loop and a clean synth pad will always be penalized on one end. A continuous `target_acousticness` float would be more accurate.
+
+**4. Valence and mood double-count happiness**
+High valence and a "happy" mood label are strongly correlated. A happy pop song earns points from both `mood_match` and `valence_proximity`, effectively being rewarded twice for the same attribute. This inflates scores for obviously happy songs and may crowd out nuanced mid-valence tracks.
+
+**5. No diversity enforcement**
+The ranking rule is a pure sort — it will happily return 5 lofi tracks in a row if they all outscore everything else. A real recommender would apply a diversity cap (e.g., max 2 songs per genre in the top 5) to prevent the list from feeling repetitive.
 
 ---
 
