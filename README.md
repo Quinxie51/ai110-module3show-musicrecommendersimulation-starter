@@ -114,6 +114,20 @@ The ranking rule is a pure sort — it will happily return 5 lofi tracks in a ro
 
 ---
 
+## Sample Output
+
+Running `python -m src.main` with the default `pop/happy` profile produces:
+
+![Terminal output showing top 5 recommendations for a pop/happy user profile](assets/terminal_output.png)
+
+**Results make sense:**
+- **#1 Sunrise City** — full genre + mood match (`pop`/`happy`), energy 0.82 ≈ target 0.80 → score 0.99
+- **#2 Gym Hero** — genre match (`pop`), wrong mood (`intense`) → drops to 0.74
+- **#3 Groove Pocket** — no genre match but mood match (`happy`) + near-perfect energy → 0.68
+- **#5 Concrete Jungle** — no categorical matches at all, ranked purely on numerical proximity
+
+---
+
 ## Getting Started
 
 ### Setup
