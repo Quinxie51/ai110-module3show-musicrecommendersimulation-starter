@@ -9,3 +9,11 @@ id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness
 8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22
 9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78
 10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35
+11,Velvet Underground,Soul Cipher,r&b,melancholic,0.55,88,0.38,0.65,0.60
+12,Concrete Jungle,StreetGrid,hip-hop,energetic,0.84,95,0.62,0.91,0.08
+13,Sonata in Blue,Clara Moss,classical,sad,0.22,66,0.21,0.18,0.97
+14,Drop Zone,Bass Meridian,edm,euphoric,0.96,138,0.88,0.94,0.03
+15,Southern Dust,Red Clay Road,country,relaxed,0.48,104,0.74,0.68,0.82
+16,Iron Veil,Darkforge,metal,intense,0.97,180,0.23,0.55,0.04
+17,Groove Pocket,The Funk Unit,funk,happy,0.78,112,0.86,0.93,0.30
+18,Ember & Ash,Sable Shore,soul,melancholic,0.44,76,0.42,0.52,0.73
